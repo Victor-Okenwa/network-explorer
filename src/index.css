@@ -4,7 +4,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: "Lato";
+  src: url("./assets/fonts/Lato.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
 @theme inline {
+     --font-sans: "Lato", sans-serif;
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
     --radius-lg: var(--radius);
@@ -116,9 +124,31 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+      @apply border-border outline-ring/50 font-sans;
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: var(--primary) var(--background);
     }
+
   body {
     @apply bg-background text-foreground;
     }
+}
+
+@layer utilities {
+  .moving-grid {
+    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.098) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.098) 1px, transparent 1px);
+    background-size: 100px 100px;
+    background-position: 0 0;
+    animation: moveGrid 7s linear infinite alternate;
+  }
+
+  @keyframes moveGrid {
+    0% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: 100px 100px;
+    }
+  }
 }
