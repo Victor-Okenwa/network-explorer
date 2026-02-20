@@ -44,7 +44,7 @@ export function MacAddressField() {
                                 <div className="flex gap-1">
                                     <span className="text-sm text-muted-foreground py-1 px-2 bg-secondary rounded-md">{byte?.slice(0, 4)}</span>
                                     <span className="text-sm text-muted-foreground py-1 px-2 bg-secondary rounded-md">{byte?.slice(4, 8)}</span>
-                                    {index < 5 && <span className="text-sm text-muted-foreground">:</span>}
+                                    {index < 5 && <span className="text-sm text-primary">:</span>}
                                 </div>
                             </div>
                         ))}

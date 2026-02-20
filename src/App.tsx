@@ -3,6 +3,7 @@ import { ThemeProvider } from "./components/theme-provider";
 import { ArrowDown } from "lucide-react";
 import { IpAddressField } from "./components/ip-address-field";
 import { MacAddressField } from "./components/mac-address-field";
+import { NetworkTopology } from "./components/network-topology";
 
 function App() {
   return (
@@ -25,9 +26,10 @@ function App() {
         </header>
 
 
-        <section id="addressing" className="py-12 sm:px-6 px-4 space-y-6">
+        <section id="addressing" className="py-16 sm:px-6 px-4 space-y-6">
           <hgroup>
-            <h2 className="text-2xl sm:text-3xl font-bold">Address Converter</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold uppercase">Address Converter</h2>
+            <p className="text-muted-foreground text-xs sm:text-sm">Convert IP and MAC addresses to binary and see how they are represented in the network.</p>
           </hgroup>
 
 
@@ -37,6 +39,27 @@ function App() {
             <MacAddressField />
           </fieldset>
         </section>
+
+
+        <section id="topology" className="py-16 sm:px-6 px-4 space-y-6">
+          <hgroup>
+            <h2 className="text-2xl sm:text-3xl font-bold uppercase">Network Topology</h2>
+            <p className="text-muted-foreground text-xs sm:text-sm">Click a host to select sender, then click another to select receiver. Server can only be selected after picking a first host.</p>
+          </hgroup>
+
+          <NetworkTopology />
+
+          {/* Packet Legend */}
+          <div className="py-2 flex flex-wrap gap-4 justify-center text-[10px] font-bold tracking-wider">
+            <div className="flex items-center gap-1.5"><span className="w-4 h-3 rounded-sm bg-blue-600 inline-block" /> L2 (Data Link)</div>
+            <div className="flex items-center gap-1.5"><span className="w-4 h-3 rounded-sm bg-green-600 inline-block" /> L3 (Network)</div>
+            <div className="flex items-center gap-1.5"><span className="w-4 h-3 rounded-sm bg-red-600 inline-block" /> L4 (Transport)</div>
+            <div className="flex items-center gap-1.5"><span className="w-4 h-3 rounded-sm bg-yellow-600 inline-block" /> Data</div>
+            <div className="flex items-center gap-1.5"><span className="w-4 h-3 rounded-sm bg-pink-400 -color inline-block" /> ARP</div>
+          </div>
+
+        </section>
+
 
       </main>
     </ThemeProvider>
