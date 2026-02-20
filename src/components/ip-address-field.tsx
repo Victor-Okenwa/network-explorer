@@ -33,7 +33,6 @@ export function IpAddressField() {
     }
 
     const binary = convertToBinary();
-    // console.log(binary);
 
     return (
         <div className="flex flex-col gap-2 flex-1 border rounded-md p-4 border-secondary focus-within:border-primary transition-all duration-300 focus-within:[&>label]:text-primary">
@@ -56,7 +55,7 @@ export function IpAddressField() {
                     </div>
                 ) : ipAddress.length > 0 ? (
                     <p className="text-xs text-muted-foreground">Enter a valid IP (0-255 per octet)</p>
-                ) : <p className="text-xs text-muted-foreground">IP addresses are 32-bit addresses that are used to identify devices on a network. They are div into 4 octets (separated by dots), each octet is 8 bits.</p>}
+                ) : <p className="text-xs text-muted-foreground">IP addresses are 32-bit addresses that are used to identify devices on a network. They are divided into 4 octets (separated by dots), each octet is 8 bits.</p>}
 
             </div>
         </div >
