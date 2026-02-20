@@ -149,6 +149,12 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
     const canSend = source && dest && !animating && !done;
     const currentZone = animating && stepIndex >= 0 && stepIndex < steps.length ? steps[stepIndex].zone : null;
 
+    const zonePositions: Record<string, { left: string; top: string; width: string }> = {
+        A: { left: '2%', top: '66%', width: '34%' },
+        B: { left: '64%', top: '66%', width: '34%' },
+        internet: { left: '33%', top: '35%', width: '34%' },
+        server: { left: '30%', top: '92%', width: '40%' },
+    };
 
     return (
         <div className="relative min-w-full min-h-[540px] flex justify-center overflow-x-auto border border-primary/30 bg-primary/5 p-2 rounded-lg">
@@ -174,7 +180,7 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
                             key={i}
                             x1={`${from.x}%`} y1={`${from.y}%`}
                             x2={`${to.x}%`} y2={`${to.y}%`}
-                            className="bg-primary! w-5! h-5! p-6!"
+                            className="bg-red-500! w-5! h-5! p-6!"
                             strokeWidth="2"
                             strokeDasharray={to.type === 'internet' || from.type === 'internet' ? '6 4' : 'none'}
                         />
@@ -244,6 +250,27 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
                 </div>
             )}
 
+            {/* Per-zone step descriptions */}
+            {(animating || done) && Object.entries(zonePositions).map(([zone, pos]) => {
+                const desc = zoneDescriptions[zone];
+                if (!desc) return null;
+                const isActive = currentZone === zone;
+                return (
+                    <div
+                        key={zone}
+                        className={cn(
+                            "absolute backdrop-blur border rounded-lg px-3 py-2 text-[11px] z-10 transition-opacity duration-300", {
+                            " border-primary": isActive,
+                            " border-muted-foreground opacity-80": !isActive,
+                        }
+                        )}
+                        style={{ left: pos.left, top: pos.top, width: pos.width }}
+                    >
+                        <span className="text-foreground/90 font-semibold leading-tight block">{desc}</span>
+                    </div>
+                );
+            })}
+
             {/* Controls */}
             <div className="absolute bottom-3 right-3 flex gap-2 z-10">
                 {(source || done) && (
@@ -269,6 +296,6 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
                     </Button>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
