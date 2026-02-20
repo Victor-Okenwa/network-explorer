@@ -101,10 +101,96 @@ function generateOneWay(
         steps.push({ description: `${prefix}✓ ${dst.label} strips L2→L3→L4 headers. Data received!`, from: destId, to: destId, packetType: 'data', layers: [], duration: 3500, zone });
         return steps;
     }
+
+    const gateway = findNode(path[1]);
+
+    // ARP for gateway
+    if (gateway.type === 'router') {
+        const zone = stepZone(sourceId, gateway.id);
+        steps.push({ description: `${prefix}${src.label} checks: Is ${dst.ip} on same subnet? No → use default gateway ${gateway.ip}`, from: sourceId, to: sourceId, packetType: 'data', layers: [], duration: 3000, zone });
+
+        if (isArpKnown(arpCache, src.label, gateway.ip)) {
+            steps.push({ description: `${prefix}ARP cache hit — ${gateway.ip} → ${gateway.mac} already known`, from: sourceId, to: sourceId, packetType: 'data', layers: [], duration: 3000, zone });
+        } else {
+            steps.push({ description: `${prefix}${src.label} broadcasts ARP: "Who has ${gateway.ip}?"`, from: sourceId, to: gateway.id, packetType: 'arp', layers: ['ARP'], duration: 3000, zone });
+            steps.push({ description: `${prefix}${gateway.label} replies: "${gateway.ip} is at ${gateway.mac}"`, from: gateway.id, to: sourceId, packetType: 'arp', layers: ['ARP'], duration: 3000, zone, tableUpdate: { nodeId: sourceId, tableType: 'arp', entry: { ip: gateway.ip, mac: gateway.mac } } });
+        }
+    }
+
+
+    // Encapsulation
+    const encapZone = stepZone(sourceId, gateway.id);
+    steps.push({ description: `${prefix}${src.label} encapsulates: L4 + L3 (${src.ip}→${dst.ip}) + L2 (→${gateway.mac})`, from: sourceId, to: sourceId, packetType: 'data', layers: ['L2', 'L3', 'L4'], duration: 4000, zone: encapZone });
+
+    // Source to gateway
+    steps.push({ description: `${prefix}Frame sent: ${src.label} → ${gateway.label}`, from: sourceId, to: gateway.id, packetType: 'data', layers: ['L2', 'L3', 'L4'], duration: 2500, zone: encapZone });
+
+    // Gateway processing
+    steps.push({ description: `${prefix}${gateway.label}: Strip L2 header, check routing table for ${dst.ip}`, from: gateway.id, to: gateway.id, packetType: 'data', layers: ['L3', 'L4'], duration: 3000, zone: encapZone, tableUpdate: { nodeId: gateway.id, tableType: 'routing', entry: { destination: dst.ip, nextHop: 'Internet', iface: 'WAN' } } });
+
+    // Gateway to internet
+    steps.push({ description: `${prefix}${gateway.label} adds new L2 header, forwards to Internet`, from: gateway.id, to: 'INET', packetType: 'data', layers: ['L2', 'L3', 'L4'], duration: 2500, zone: 'internet' });
+
+
+    // Find destination router
+    const lastHopIndex = path.length - 2;
+    const lastHop = findNode(path[lastHopIndex]);
+
+    if (lastHop.type === 'router') {
+        const dstZone = stepZone(lastHop.id, destId);
+        // Internet to dest router
+        steps.push({ description: `${prefix}Internet routes packet → ${lastHop.label}`, from: 'INET', to: lastHop.id, packetType: 'data', layers: ['L2', 'L3', 'L4'], duration: 2500, zone: 'internet' });
+
+        // Dest router processing
+        steps.push({ description: `${prefix}${lastHop.label}: Strip L2, check routing table → ${dst.label} is local`, from: lastHop.id, to: lastHop.id, packetType: 'data', layers: ['L3', 'L4'], duration: 3000, zone: dstZone, tableUpdate: { nodeId: lastHop.id, tableType: 'routing', entry: { destination: dst.ip, nextHop: dst.ip, iface: 'LAN' } } });
+
+        // ARP for destination
+        if (isArpKnown(arpCache, lastHop.label, dst.ip)) {
+            steps.push({ description: `${prefix}ARP cache hit — ${dst.ip} → ${dst.mac} already known`, from: lastHop.id, to: lastHop.id, packetType: 'data', layers: [], duration: 3000, zone: dstZone });
+        } else {
+            steps.push({ description: `${prefix}${lastHop.label} sends ARP: "Who has ${dst.ip}?"`, from: lastHop.id, to: destId, packetType: 'arp', layers: ['ARP'], duration: 2500, zone: dstZone });
+            steps.push({ description: `${prefix}${dst.label} replies: MAC = ${dst.mac}`, from: destId, to: lastHop.id, packetType: 'arp', layers: ['ARP'], duration: 2500, zone: dstZone, tableUpdate: { nodeId: lastHop.id, tableType: 'arp', entry: { ip: dst.ip, mac: dst.mac } } });
+        }
+
+        // Forward to destination
+        steps.push({ description: `${prefix}${lastHop.label} adds L2 (→${dst.mac}), forwards to ${dst.label}`, from: lastHop.id, to: destId, packetType: 'data', layers: ['L2', 'L3', 'L4'], duration: 2500, zone: dstZone });
+    } else {
+        // Direct to server (no router for network C)
+        steps.push({ description: `${prefix}Internet delivers packet to ${dst.label}`, from: 'INET', to: destId, packetType: 'data', layers: ['L2', 'L3', 'L4'], duration: 2500, zone: 'server' });
+    }
+
+    // Delivered
+    const finalZone = getZone(destId);
+    steps.push({ description: `${prefix}✓ ${dst.label} strips all headers (L2→L3→L4). Data received successfully!`, from: destId, to: destId, packetType: 'data', layers: [], duration: 3500, zone: finalZone });
+
+    return steps;
 }
 
 
 export function generateSteps(sourceId: string, destId: string, arpCache: Record<string, ArpEntry[]> = {}): AnimationStep[] {
     // Forward trip
     const forwardSteps = generateOneWay(sourceId, destId, arpCache, false);
+
+    // Build cache including entries from forward trip
+    const updatedCache: Record<string, ArpEntry[]> = {};
+
+    for (const [k, v] of Object.entries(arpCache)) {
+        updatedCache[k] = [...v];
+    }
+
+    for (const step of forwardSteps) {
+        if (step.tableUpdate && step.tableUpdate.tableType === 'arp') {
+            const label = NODES.find(node => node.id === step.tableUpdate!.nodeId)?.label ?? step.tableUpdate.nodeId;
+            if (!updatedCache[label]) updatedCache[label] = [];
+            if (!updatedCache[label].some(entry => entry.ip === step.tableUpdate!.entry.ip)) {
+                updatedCache[label].push({ ip: step.tableUpdate!.entry.ip, mac: step.tableUpdate!.entry.mac });
+            }
+        }
+    }
+
+
+  // Response trip (reverse)
+  const responseSteps = generateOneWay(destId, sourceId, updatedCache, true);
+
+  return [...forwardSteps, ...responseSteps];
 }
