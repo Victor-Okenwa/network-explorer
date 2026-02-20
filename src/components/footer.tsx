@@ -12,10 +12,10 @@ export function Footer() {
             <div className="flex items-center justify-center gap-1 flex-wrap">
                 <a href="mailto:okenwavictor003@gmail.com" className="text-primary underline!">okenwavictor003@gmail.com</a>
                 <Dot />
-                <a href="https://github.com/Victor-Okenwa" target="_blank" rel="noopener noreferrer" className="text-muted-foreground underline!">
+                <a href="https://github.com/Victor-Okenwa" target="_blank" rel="noopener noreferrer" className="text-muted-foreground underline! hover:text-foreground">
                     GitHub
                 </a>
-                <a href="https://twitter.com/morse_code_001" target="_blank" rel="noopener noreferrer" className="text-muted-foreground underline!">
+                <a href="https://twitter.com/morse_code_001" target="_blank" rel="noopener noreferrer" className="text-muted-foreground underline! hover:text-foreground">
                     Twitter
                 </a>
             </div>
