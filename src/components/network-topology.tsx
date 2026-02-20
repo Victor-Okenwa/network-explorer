@@ -1,8 +1,10 @@
 import { findNode, NODES } from "@/data/network-data";
 import { CONNECTIONS } from "@/data/network-data";
 import { cn } from "@/lib/utils";
-import { Cloud, Laptop, Smartphone, Wifi, Server } from "lucide-react";
+import type { AnimationStep, ArpEntry } from "@/types/network";
+import { Cloud, Laptop, Smartphone, Wifi, Server, RotateCcw, RefreshCw } from "lucide-react";
 import { useCallback, useState } from "react";
+import { Button } from "./ui/button";
 
 const ICON_MAP: Record<string, React.ElementType> = {
     laptop: Laptop,
@@ -12,15 +14,22 @@ const ICON_MAP: Record<string, React.ElementType> = {
     internet: Cloud,
 };
 
+interface Props {
+    onTableUpdate: (update: NonNullable<AnimationStep['tableUpdate']>) => void;
+    onResetAll: () => void;
+    onResetSelection: () => void;
+    arpCaches: Record<string, ArpEntry[]>;
+}
 
-export function NetworkTopology() {
+export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, arpCaches }: Props) {
     const [source, setSource] = useState<string | null>(null); // Id of the source will stored here
     const [dest, setDest] = useState<string | null>(null); // Id of the destination will stored here
     const [animating, setAnimating] = useState(false); // when the packet is being transferred
     const [done, setDone] = useState(false); // when the packet has been transferred
-
-
-
+    const [steps, setSteps] = useState<AnimationStep[]>([]);
+    const [packetPos, setPacketPos] = useState<{ x: number; y: number } | null>(null);
+    const [packetInfo, setPacketInfo] = useState<{ type: 'data' | 'arp'; layers: string[] } | null>(null);
+    const [zoneDescriptions, setZoneDescriptions] = useState<Record<string, string>>({});
 
     const isSelectable = (id: string) => {
         const node = findNode(id);
@@ -58,10 +67,18 @@ export function NetworkTopology() {
         if (!dest) {
             setDest(nodeId);
         }
-    }, [source, dest, animating, done])
+    }, [source, dest, animating, done]);
+
+    const handleSend = () => {
+        if (!source || !dest) return;
+        const s = generateSteps(source, dest, arpCache);
+
+    }
+
+
 
     return (
-        <div className="relative w-full min-h-[540px] flex justify-center overflow-x-auto border border-primary/30 bg-primary/5 p-2 rounded-lg">
+        <div className="relative min-w-full min-h-[540px] flex justify-center overflow-x-auto border border-primary/30 bg-primary/5 p-2 rounded-lg">
             {/* Network boundaries */}
             <div className="absolute border border-dashed border-primary/25 rounded-lg left-[2%] top-[6%] w-[34%] h-[58%]">
                 <span className="absolute -top-2.5 left-3 bg-card px-2 text-[10px] text-primary font-bold tracking-wider">
@@ -84,7 +101,7 @@ export function NetworkTopology() {
                             key={i}
                             x1={`${from.x}%`} y1={`${from.y}%`}
                             x2={`${to.x}%`} y2={`${to.y}%`}
-                            className="stroke-network-line"
+                            className="bg-primary! w-5! h-5! p-6!"
                             strokeWidth="2"
                             strokeDasharray={to.type === 'internet' || from.type === 'internet' ? '6 4' : 'none'}
                         />
@@ -103,24 +120,82 @@ export function NetworkTopology() {
                     key={node.id}
                     className={cn("absolute flex flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ease-in-out z-5", {
                         "cursor-pointer": selectable && !animating && !done,
-                        "animate-bounce": shouldPulse,
+                        "animate-pulse": shouldPulse,
                     })}
                     style={{ left: `${node.x}%`, top: `${node.y}%` }}
                     onClick={() => handleNodeClick(node.id)}
                 >
                     <div className={cn("p-2.5 rounded-xl border-2 transition-all duration-300", {
-                        "bg-primary/30 border-primary shadow shadow-primary": isSource,
-                        "bg-primary/10 border-primary/30 shadow shadow-primary/30": isDest,
+                        "bg-primary/50 border-primary shadow shadow-primary": isSource,
+                        "bg-primary/40 border-primary/30 shadow shadow-primary/80": isDest,
                         "border-border bg-muted-foreground/50": node.type === "internet",
                         "border-border hover:border-muted-foreground": node.type !== "internet" && node.type !== "router",
                     })}>
-                        <Icon />
-
+                        <Icon className={cn("size-7",)} />
                     </div>
-
+                    <span className={cn(
+                        "text-[10px] font-bold tracking-wider whitespace-nowrap text-muted'", {
+                        "text-primary": isSource || isDest,
+                    }
+                    )}>
+                        {node.label}
+                    </span>
+                    {selectable && (
+                        <span className="text-[8px] text-muted-foreground">{node.ip}</span>
+                    )}
                 </div>
                 )
             })}
-        </div >
+
+            {/* Animated Packet */}
+            {packetPos && packetInfo && (packetInfo.layers.length > 0 || packetInfo.type === 'arp') && (
+                <div className="absolute -translate-x-1/2 z-20 pointer-events-none"
+                    style={{
+                        left: `${packetPos.x}%`,
+                        top: `${packetPos.y - 8}%`,
+                        transition: 'left 1.8s ease-in-out, top 1.8s ease-in-out',
+                    }}
+                >
+                    {packetInfo.type === 'arp' ? (
+                        <div className="bg-pink-400 text-white px-2.5 py-1 rounded-md text-[10px] font-black shadow-lg shadow-arp-color/30 border border-white/20">
+                            ARP
+                        </div>
+                    ) : (
+                        <div className="flex rounded-md overflow-hidden text-[10px] font-black shadow-lg border border-white/10">
+                            {packetInfo.layers.includes('L2') && <span className="bg-blue-600 text-white px-1.5 py-1">L2</span>}
+                            {packetInfo.layers.includes('L3') && <span className="bg-green-600 text-white px-1.5 py-1">L3</span>}
+                            {packetInfo.layers.includes('L4') && <span className="bg-red-600 text-white px-1.5 py-1">L4</span>}
+                            <span className="bg-yellow-600 text-black px-2 py-1">Data</span>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Controls */}
+            <div className="absolute bottom-3 right-3 flex gap-2 z-10">
+                {(source || done) && (
+                    <Button variant="outline" size="sm" onClick={handleResetAll} className="text-xs h-8 gap-1.5">
+                        <RotateCcw className="w-3 h-3" />
+                        Reset All
+                    </Button>
+                )}
+                {done && (
+                    <Button variant="secondary" size="sm" onClick={handleNewTransfer} className="text-xs h-8 gap-1.5">
+                        <RefreshCw className="w-3 h-3" />
+                        New Transfer
+                    </Button>
+                )}
+                {!done && (
+                    <Button
+                        size="sm"
+                        disabled={!canSend}
+                        onClick={handleSend}
+                        className={cn('text-xs h-8', canSend && 'glow-primary')}
+                    >
+                        Send Request
+                    </Button>
+                )}
+            </div>
+        </div>
     );
 }

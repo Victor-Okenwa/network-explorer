@@ -24,3 +24,87 @@ export const CONNECTIONS: Connection[] = [
 export function findNode(id: string): NetworkNode {
     return NODES.find(n => n.id === id)!;
 }
+
+function getZone(nodeId: string): 'A' | 'B' | 'internet' | 'server' {
+    const node = findNode(nodeId);
+    if (node.network === 'A') return 'A';
+    if (node.network === 'B') return 'B';
+    if (node.network === 'C') return 'server';
+    return 'internet';
+}
+
+function stepZone(fromId: string, toId: string): 'A' | 'B' | 'internet' | 'server' {
+    const zFrom = getZone(fromId);
+    const zTo = getZone(toId);
+
+    if (zFrom === zTo) return zFrom;
+    if (zFrom === 'internet' || zTo === 'internet') {
+        // prefer the non-internet zone
+        return zFrom === 'internet' ? zTo : zFrom;
+    }
+    return zFrom;
+}
+
+
+export function getPath(fromId: string, toId: string): string[] {
+    const src = findNode(fromId);
+    const dst = findNode(toId);
+
+    // Same network
+    if (src.network === dst.network) {
+        return [fromId, `R${src.network}`, toId];
+    }
+
+    const path: string[] = [fromId];
+    path.push(`R${src.network}`);
+    path.push("INET");
+    if (dst.network !== "C") {
+        path.push(`R${dst.network}`);
+    }
+    path.push(toId);
+    return path;
+}
+
+function isArpKnown(arpCache: Record<string, ArpEntry[]>, nodeLabel: string, targetIp: string): boolean {
+    const entries = arpCache[nodeLabel] ?? [];
+    return entries.some(e => e.ip === targetIp);
+}
+
+function generateOneWay(
+    sourceId: string,
+    destId: string,
+    arpCache: Record<string, ArpEntry[]>,
+    isResponse: boolean,
+): AnimationStep[] {
+    const path = getPath(sourceId, destId);
+    const src = findNode(sourceId);
+    const dst = findNode(destId);
+
+    const steps: AnimationStep[] = [];
+    const sameNetwork = src.network === dst.network && src.network !== 'C';
+    const prefix = isResponse ? '↩ Response: ' : '';
+
+    if (sameNetwork) {
+        const zone = stepZone(sourceId, destId);
+        steps.push({ description: `${prefix}${src.label} checks: Is ${dst.ip} on same subnet? Yes! (same /24)`, from: sourceId, to: sourceId, packetType: 'data', layers: [], duration: 3000, zone });
+
+        if (isArpKnown(arpCache, src.label, dst.ip)) {
+            steps.push({ description: `${prefix}ARP cache hit — ${dst.ip} → ${dst.mac} already known`, from: sourceId, to: sourceId, packetType: 'data', layers: [], duration: 3000, zone });
+        } else {
+            steps.push({ description: `${prefix}${src.label} broadcasts ARP Request: "Who has ${dst.ip}?"`, from: sourceId, to: destId, packetType: 'arp', layers: ['ARP'], duration: 2000, zone });
+            steps.push({ description: `${prefix}${dst.label} replies: "${dst.ip} is at ${dst.mac}"`, from: destId, to: sourceId, packetType: 'arp', layers: ['ARP'], duration: 2000, zone, tableUpdate: { nodeId: sourceId, tableType: 'arp', entry: { ip: dst.ip, mac: dst.mac } } });
+        }
+
+        steps.push({ description: `${prefix}${src.label} encapsulates: L4 (Transport) + L3 (${src.ip}→${dst.ip}) + L2 (→${dst.mac})`, from: sourceId, to: sourceId, packetType: 'data', layers: ['L2', 'L3', 'L4'], duration: 4000, zone });
+        steps.push({ description: `${prefix}Frame sent: ${src.label} → Switch (${findNode(path[1]).label})`, from: path[0], to: path[1], packetType: 'data', layers: ['L2', 'L3', 'L4'], duration: 2500, zone });
+        steps.push({ description: `${prefix}Switch forwards frame to ${dst.label}`, from: path[1], to: path[2], packetType: 'data', layers: ['L2', 'L3', 'L4'], duration: 2500, zone });
+        steps.push({ description: `${prefix}✓ ${dst.label} strips L2→L3→L4 headers. Data received!`, from: destId, to: destId, packetType: 'data', layers: [], duration: 3500, zone });
+        return steps;
+    }
+}
+
+
+export function generateSteps(sourceId: string, destId: string, arpCache: Record<string, ArpEntry[]> = {}): AnimationStep[] {
+    // Forward trip
+    const forwardSteps = generateOneWay(sourceId, destId, arpCache, false);
+}

@@ -4,8 +4,55 @@ import { ArrowDown } from "lucide-react";
 import { IpAddressField } from "./components/ip-address-field";
 import { MacAddressField } from "./components/mac-address-field";
 import { NetworkTopology } from "./components/network-topology";
+import { useState } from "react";
+import { useCallback } from "react";
+import type { AnimationStep, ArpEntry, RoutingEntry } from "./types/network";
+import { NODES } from "./data/network-data";
 
 function App() {
+  const [arpCaches, setArpCaches] = useState<Record<string, ArpEntry[]>>({});
+  const [routingTables, setRoutingTables] = useState<Record<string, RoutingEntry[]>>({});
+
+
+  const handleTableUpdate = useCallback((update: NonNullable<AnimationStep['tableUpdate']>) => {
+    const { nodeId, tableType, entry } = update;
+    const label = NODES.find((node) => node.id === nodeId)?.label ?? nodeId;
+
+    if (tableType === 'arp') {
+      setArpCaches((prev) => {
+        const existing = prev[label] ?? [];
+        if (existing.some((e) => e.ip === entry.ip)) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [label]: [...existing, { ip: entry.ip, mac: entry.mac }],
+        };
+      })
+    } else {
+      setRoutingTables((prev) => {
+        const existing = prev[label] ?? [];
+        if (existing.some((e) => e.destination === entry.destination)) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [label]: [...existing, { destination: entry.destination, nextHop: entry.nextHop, iface: entry.iface }],
+        };
+      })
+    }
+
+  }, []);
+
+  const handleResetAll = useCallback(() => {
+    setArpCaches({});
+    setRoutingTables({});
+  }, []);
+
+  const handleResetSelection = useCallback(() => {
+    // Keep tables intact, only selection/animation state resets in NetworkTopology
+  }, []);
+
   return (
     <ThemeProvider defaultTheme="dark" storageKey="network-explorer-theme">
       <main>
@@ -47,7 +94,7 @@ function App() {
             <p className="text-muted-foreground text-xs sm:text-sm">Click a host to select sender, then click another to select receiver. Server can only be selected after picking a first host.</p>
           </hgroup>
 
-          <NetworkTopology />
+          <NetworkTopology onTableUpdate={handleTableUpdate} onResetAll={handleResetAll} onResetSelection={handleResetSelection} arpCaches={arpCaches} />
 
           {/* Packet Legend */}
           <div className="py-2 flex flex-wrap gap-4 justify-center text-[10px] font-bold tracking-wider">
@@ -57,7 +104,6 @@ function App() {
             <div className="flex items-center gap-1.5"><span className="w-4 h-3 rounded-sm bg-yellow-600 inline-block" /> Data</div>
             <div className="flex items-center gap-1.5"><span className="w-4 h-3 rounded-sm bg-pink-400 -color inline-block" /> ARP</div>
           </div>
-
         </section>
 
 
