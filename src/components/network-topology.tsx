@@ -1,9 +1,9 @@
-import { findNode, NODES } from "@/data/network-data";
+import { findNode, generateSteps, NODES } from "@/data/network-data";
 import { CONNECTIONS } from "@/data/network-data";
 import { cn } from "@/lib/utils";
 import type { AnimationStep, ArpEntry } from "@/types/network";
 import { Cloud, Laptop, Smartphone, Wifi, Server, RotateCcw, RefreshCw } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "./ui/button";
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -26,6 +26,7 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
     const [dest, setDest] = useState<string | null>(null); // Id of the destination will stored here
     const [animating, setAnimating] = useState(false); // when the packet is being transferred
     const [done, setDone] = useState(false); // when the packet has been transferred
+    const [stepIndex, setStepIndex] = useState(-1);
     const [steps, setSteps] = useState<AnimationStep[]>([]);
     const [packetPos, setPacketPos] = useState<{ x: number; y: number } | null>(null);
     const [packetInfo, setPacketInfo] = useState<{ type: 'data' | 'arp'; layers: string[] } | null>(null);
@@ -69,12 +70,80 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
         }
     }, [source, dest, animating, done]);
 
-    const handleSend = () => {
+    const handleSend = useCallback(() => {
         if (!source || !dest) return;
-        const s = generateSteps(source, dest, arpCache);
+        const s = generateSteps(source, dest, arpCaches);
+        setSteps(s);
+        setStepIndex(0);
+        setAnimating(true);
+        setZoneDescriptions({});
+    }, [source, dest, arpCaches]);
 
-    }
+    const resetAnimationState = () => {
+        setSource(null);
+        setDest(null);
+        setAnimating(false);
+        setStepIndex(-1);
+        setSteps([]);
+        setPacketPos(null);
+        setPacketInfo(null);
+        setDone(false);
+        setZoneDescriptions({});
+    };
 
+    const handleResetAll = () => {
+        resetAnimationState();
+        onResetAll();
+    };
+
+    const handleNewTransfer = () => {
+        resetAnimationState();
+        onResetSelection();
+    };
+
+    useEffect(() => {
+        if (!animating || stepIndex < 0) return;
+
+        if (stepIndex >= steps.length) {
+            setAnimating(false);
+            setPacketPos(null);
+            setPacketInfo(null);
+            setDone(true);
+            return;
+        }
+
+        const step = steps[stepIndex];
+        const fromNode = findNode(step.from);
+        const toNode = findNode(step.to);
+
+
+        // Update zone description
+        setZoneDescriptions(prev => ({ ...prev, [step.zone]: step.description }));
+        setPacketPos({ x: fromNode.x, y: fromNode.y });
+        setPacketInfo({ type: step.packetType, layers: step.layers });
+
+        const moveTimer = setTimeout(() => {
+            if (step.from !== step.to) {
+                setPacketPos({ x: toNode.x, y: toNode.y });
+            }
+        }, 250);
+
+        const nextTimer = setTimeout(() => {
+            if (step.tableUpdate) {
+                onTableUpdate(step.tableUpdate);
+            }
+            setStepIndex(prev => prev + 1);
+        }, step.duration);
+
+        return () => {
+            clearTimeout(moveTimer);
+            clearTimeout(nextTimer);
+        };
+    }, [stepIndex, animating, steps, onTableUpdate]);
+
+
+    const canSend = source && dest && !animating && !done;
+    const currentZone = animating && stepIndex >= 0 && stepIndex < steps.length ? steps[stepIndex].zone : null;
 
 
     return (
