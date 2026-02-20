@@ -63,7 +63,6 @@ export function getPath(fromId: string, toId: string): string[] {
     else if (dst.network === 'B') path.push('RB');
     path.push(toId);
 
-    console.log(path);
     return path;
 }
 

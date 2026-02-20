@@ -124,7 +124,7 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
             setZoneDescriptions(prev => ({ ...prev, [step.zone]: step.description }));
             setPacketPos({ x: fromNode.x, y: fromNode.y });
             setPacketInfo({ type: step.packetType, layers: step.layers });
-        })
+        });
 
         const moveTimer = setTimeout(() => {
             if (step.from !== step.to) {
@@ -153,11 +153,11 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
         A: { left: '2%', top: '66%', width: '34%' },
         B: { left: '64%', top: '66%', width: '34%' },
         internet: { left: '33%', top: '35%', width: '34%' },
-        server: { left: '30%', top: '92%', width: '40%' },
+        server: { left: '10%', top: '92%', width: '40%' },
     };
 
     return (
-        <div className="relative min-w-full min-h-[540px] flex justify-center overflow-x-auto border border-primary/30 bg-primary/5 p-2 rounded-lg">
+        <div className="relative min-h-[600px] min-w-lg flex justify-center overflow-x-auto border border-primary/30 bg-primary/5 p-2 rounded-lg">
             {/* Network boundaries */}
             <div className="absolute border border-dashed border-primary/25 rounded-lg left-[2%] top-[6%] w-[34%] h-[58%]">
                 <span className="absolute -top-2.5 left-3 bg-card px-2 text-[10px] text-primary font-bold tracking-wider">

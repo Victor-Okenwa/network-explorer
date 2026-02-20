@@ -88,7 +88,7 @@ function App() {
         </section>
 
 
-        <section id="topology" className="py-16 sm:px-6 px-4 space-y-6">
+        <section id="topology" className="py-16 sm:px-4 px-2 space-y-6">
           <hgroup>
             <h2 className="text-2xl sm:text-3xl font-bold uppercase">Network Topology</h2>
             <p className="text-muted-foreground text-xs sm:text-sm">Click a host to select sender, then click another to select receiver. Server can only be selected after picking a first host.</p>
