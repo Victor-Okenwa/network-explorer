@@ -105,10 +105,12 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
         if (!animating || stepIndex < 0) return;
 
         if (stepIndex >= steps.length) {
-            setAnimating(false);
-            setPacketPos(null);
-            setPacketInfo(null);
-            setDone(true);
+            queueMicrotask(() => {
+                setAnimating(false);
+                setPacketPos(null);
+                setPacketInfo(null);
+                setDone(true);
+            })
             return;
         }
 
@@ -118,9 +120,11 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
 
 
         // Update zone description
-        setZoneDescriptions(prev => ({ ...prev, [step.zone]: step.description }));
-        setPacketPos({ x: fromNode.x, y: fromNode.y });
-        setPacketInfo({ type: step.packetType, layers: step.layers });
+        queueMicrotask(() => {
+            setZoneDescriptions(prev => ({ ...prev, [step.zone]: step.description }));
+            setPacketPos({ x: fromNode.x, y: fromNode.y });
+            setPacketInfo({ type: step.packetType, layers: step.layers });
+        })
 
         const moveTimer = setTimeout(() => {
             if (step.from !== step.to) {
