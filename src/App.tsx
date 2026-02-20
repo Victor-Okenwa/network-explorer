@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useCallback } from "react";
 import type { AnimationStep, ArpEntry, RoutingEntry } from "./types/network";
 import { NODES } from "./data/network-data";
+import { NetworkTable } from "./components/network-table";
 
 function App() {
   const [arpCaches, setArpCaches] = useState<Record<string, ArpEntry[]>>({});
@@ -105,6 +106,17 @@ function App() {
             <div className="flex items-center gap-1.5"><span className="w-4 h-3 rounded-sm bg-pink-400 -color inline-block" /> ARP</div>
           </div>
         </section>
+
+
+        <section id="tables" className="py-16 sm:px-4 px-2 space-y-6">
+          <hgroup>
+            <h2 className="text-lg sm:text-xl font-bold uppercase">Network Tables</h2>
+            <p className="text-muted-foreground text-xs sm:text-sm">Each table will populate as you select hosts and send packets.</p>
+          </hgroup>
+
+          <NetworkTable arpCaches={arpCaches} routingTables={routingTables} />
+        </section>
+
 
 
       </main>

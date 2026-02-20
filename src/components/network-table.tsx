@@ -12,7 +12,7 @@ export function NetworkTable({ arpCaches, routingTables }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
             {/* ARP Caches */}
             {Object.entries(arpCaches).filter(([_, entries]) => entries.length > 0).map(([nodeId, entries]) => (
-                <div key={`arp-${nodeId}`} className="bg-muted-foreground/50 p-4 rounded-lg">
+                <div key={`arp-${nodeId}`} className="bg-primary-foreground/30 border-primary/30 border p-4 rounded-lg">
                     <hgroup>
                         <h2>{nodeId} — ARP Cache</h2>
                     </hgroup>
