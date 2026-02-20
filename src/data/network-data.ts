@@ -56,12 +56,14 @@ export function getPath(fromId: string, toId: string): string[] {
     }
 
     const path: string[] = [fromId];
-    path.push(`R${src.network}`);
-    path.push("INET");
-    if (dst.network !== "C") {
-        path.push(`R${dst.network}`);
-    }
+    if (src.network === 'A') path.push('RA');
+    else if (src.network === 'B') path.push('RB');
+    path.push('INET');
+    if (dst.network === 'A') path.push('RA');
+    else if (dst.network === 'B') path.push('RB');
     path.push(toId);
+
+    console.log(path);
     return path;
 }
 
