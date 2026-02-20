@@ -9,6 +9,7 @@ import { useCallback } from "react";
 import type { AnimationStep, ArpEntry, RoutingEntry } from "./types/network";
 import { NODES } from "./data/network-data";
 import { NetworkTable } from "./components/network-table";
+import { Footer } from "./components/footer";
 
 function App() {
   const [arpCaches, setArpCaches] = useState<Record<string, ArpEntry[]>>({});
@@ -120,6 +121,8 @@ function App() {
 
 
       </main>
+
+      <Footer />
     </ThemeProvider>
   )
 }
