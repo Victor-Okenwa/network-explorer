@@ -110,7 +110,7 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
                 setPacketPos(null);
                 setPacketInfo(null);
                 setDone(true);
-            })
+            });
             return;
         }
 
@@ -171,7 +171,7 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
             </div>
 
             {/* SVG connections */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+            <svg className="absolute inset-0 w-full h-full pointer-events-none text-primary/30" xmlns="http://www.w3.org/2000/svg">
                 {CONNECTIONS.map((conn, i) => {
                     const from = findNode(conn.from);
                     const to = findNode(conn.to);
@@ -179,8 +179,8 @@ export function NetworkTopology({ onTableUpdate, onResetAll, onResetSelection, a
                         <line
                             key={i}
                             x1={`${from.x}%`} y1={`${from.y}%`}
-                            x2={`${to.x}%`} y2={`${to.y}%`}
-                            className="bg-red-500! w-5! h-5! p-6!"
+                            x2={`${to.x}%`} y2={`${to.y }%`}
+                            stroke="currentColor"
                             strokeWidth="2"
                             strokeDasharray={to.type === 'internet' || from.type === 'internet' ? '6 4' : 'none'}
                         />
